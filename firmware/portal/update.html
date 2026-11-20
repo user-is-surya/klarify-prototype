@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1A20">
+<title>Update firmware - Klarify</title>
+<style>
+  :root{--ink:#0B1A20;--ink2:#12262E;--line:#25414B;--text:#EAF2F1;--muted:#A3BBBF;--live:#19C3B1;--bad:#FF8A98;--brand:#D94A20}
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;min-height:100vh;background:var(--ink);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  .wrap{max-width:560px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 18px max(28px,env(safe-area-inset-bottom))}
+  :focus-visible{outline:3px solid var(--live);outline-offset:3px;border-radius:6px}
+  .mark{font-weight:800;font-size:1.3rem;letter-spacing:-.03em}.mark b{color:var(--brand)}
+  h1{margin:22px 0 6px;font-size:clamp(2rem,9vw,2.8rem);line-height:1;font-weight:800;letter-spacing:-.04em}
+  p{margin:0 0 14px;color:var(--muted)}
+  .card{background:var(--ink2);border-radius:18px;padding:18px;margin-top:18px}
+  .ver{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:18px}
+  .ver output{font-weight:800;font-size:1.3rem}
+  label{display:block;font-weight:700;margin:0 0 6px}
+  .help{display:block;font-weight:400;font-size:.875rem;color:var(--muted);margin:0 0 8px}
+  input[type=password],input[type=file]{width:100%;min-height:52px;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--ink);color:var(--text);font:inherit}
+  input[type=file]{padding:10px 12px}
+  input[type=file]::file-selector-button{margin-right:12px;padding:8px 14px;border:0;border-radius:8px;background:var(--line);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
+  .field{margin-bottom:18px}
+  button{width:100%;min-height:54px;border:0;border-radius:14px;background:var(--live);color:#04211D;font-family:inherit;font-weight:800;font-size:1.05rem;cursor:pointer}
+  button:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+  progress{width:100%;height:14px;margin:18px 0 0;border-radius:8px;accent-color:var(--live)}
+  #msg{margin:16px 0 0;min-height:1.5em;font-weight:600}
+  #msg.bad{color:var(--bad)}#msg.good{color:var(--live)}
+  a{color:var(--text);font-weight:700}
+  .warn{border-left:4px solid #FFB000;padding:10px 14px;border-radius:10px;background:var(--ink);color:var(--text);font-size:.9375rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="mark">Klarif<b>y</b></div>
+  <h1>Update firmware</h1>
+  <p>Install a new version over Wi-Fi. This phone or laptop must be on the Klarify-Demo network.</p>
+
+  <form class="card" id="form" autocomplete="off">
+    <div class="ver"><span>Installed version</span><output id="cur">checking</output></div>
+
+    <div class="field">
+      <label for="pw">Update password</label>
+      <span class="help" id="pw-h">The password is in the README.</span>
+      <input id="pw" type="password" aria-describedby="pw-h" autocomplete="off" autocapitalize="off">
+    </div>
+
+    <div class="field">
+      <label for="file">Update file</label>
+      <span class="help" id="file-h">Choose klarify-ota.bin from the kit. Do not choose firmware.bin; that file is for USB.</span>
+      <input id="file" type="file" accept=".bin" aria-describedby="file-h">
+    </div>
+
+    <button type="submit" id="go" disabled>Install update</button>
+    <progress id="bar" max="100" value="0" hidden aria-label="Upload progress"></progress>
+    <p id="msg" role="status" aria-live="polite"></p>
+  </form>
+
+  <p class="warn" style="margin-top:18px">Keep the board plugged in while it installs. It restarts by itself when done.</p>
+  <p><a href="/">Back to alerts</a></p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+
+  // BEGIN describeResult
+  // Turns the board's answer (or a network failure, status 0) into a message a person can act on.
+  function describeResult(status, text){
+    var body=null; try{ body=JSON.parse(text); }catch(e){}
+    if(status===0) return {ok:false,msg:"Lost the connection to the board. Is this device on the Klarify-Demo Wi-Fi?"};
+    if(status>=200 && status<300 && body && body.ok) return {ok:true,msg:"Installed. The board is restarting."};
+    if(status===403) return {ok:false,msg:"Wrong password."};
+    var err=body && body.error ? String(body.error) : "";
+    if(/magic/i.test(err)) return {ok:false,msg:"That file is not an update image. Use klarify-ota.bin, not firmware.bin."};
+    return {ok:false,msg: err ? ("The board refused the update: "+err) : ("Update failed (HTTP "+status+").")};
+  }
+  // END describeResult
+
+  function say(msg,cls){ var m=$("msg"); m.textContent=msg; m.className=cls||""; }
+  function ready(){ $("go").disabled = !($("pw").value && $("file").files.length); }
+  $("pw").addEventListener("input",ready); $("file").addEventListener("change",ready);
+
+  function version(){
+    return fetch("/api/version",{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(v){ return v.version; });
+  }
+  version().then(function(v){ $("cur").textContent="v"+v; }).catch(function(){ $("cur").textContent="unknown"; });
+
+  // After the board restarts it needs a few seconds to bring the Wi-Fi back.
+  function waitForBoard(tries){
+    version().then(function(v){
+      $("cur").textContent="v"+v; say("Done. The board is now running version "+v+".","good"); $("go").disabled=false; $("bar").hidden=true;
+    }).catch(function(){
+      if(tries<=0){ say("Installed, but the board has not come back yet. Rejoin the Klarify-Demo Wi-Fi and reload this page.","bad"); $("go").disabled=false; return; }
+      setTimeout(function(){ waitForBoard(tries-1); },1500);
+    });
+  }
+
+  $("form").addEventListener("submit",function(ev){
+    ev.preventDefault();
+    var f=$("file").files[0]; if(!f) return;
+    var fd=new FormData(); fd.append("file",f,f.name);
+    var x=new XMLHttpRequest();
+    x.open("POST","/update?key="+encodeURIComponent($("pw").value));
+    x.timeout=240000;
+    $("go").disabled=true; $("bar").hidden=false; $("bar").value=0; say("Uploading. Keep the board plugged in.","");
+    x.upload.onprogress=function(e){ if(e.lengthComputable) $("bar").value=Math.round(e.loaded*100/e.total); };
+    function fail(status,text){ var r=describeResult(status,text); say(r.msg,"bad"); $("go").disabled=false; $("bar").hidden=true; }
+    x.onload=function(){
+      var r=describeResult(x.status,x.responseText);
+      if(r.ok){ say(r.msg+" Waiting for it to come back.","good"); setTimeout(function(){ waitForBoard(30); },3000); }
+      else fail(x.status,x.responseText);
+    };
+    x.onerror=function(){ fail(0,""); };
+    x.ontimeout=function(){ fail(0,""); };
+    x.send(fd);
+  });
+})();
+</script>
+</body>
+</html>

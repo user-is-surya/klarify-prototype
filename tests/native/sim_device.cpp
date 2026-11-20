@@ -27,7 +27,7 @@ int main() {
     if (!parser.feed((uint8_t)c, fr)) continue;
     do {
       if (fr.type == kFramePing) {
-        printf("PONG klarify-fw 1.0\n");
+        printf("PONG klarify-fw %s\n", kFirmwareVersion);
         fflush(stdout);
       } else if (fr.type == kFramePcm && fr.len >= 2) {
         size_t n = (fr.len - 2) / 2;

@@ -46,12 +46,27 @@ The small blue LED on the board also blinks: urgent = fast, important = two blin
 Mute test: on the phone tick a sound under "Mute a sound" - it stops alerting but still appears
 in the history, struck through.
 
+Updating later without USB (over Wi-Fi)
+----------------------------------------
+The first time, flash this version with USB (Step 1). After that, new versions can be installed
+over Wi-Fi - no cable needed:
+  1. Download the new kit and unzip it on the laptop or phone.
+  2. Join the "Klarify-Demo" Wi-Fi (this cuts the internet, so download first).
+  3. EITHER open  http://192.168.4.1/update  in a browser, type the password, choose
+     klarify-ota.bin, tap "Install update"
+     OR on the laptop double-click  update.bat  (it sends klarify-ota.bin from the same folder).
+  4. Wait about 10 seconds. The board restarts by itself. The portal footer shows the version.
+Password: klarify   (it only stops casual mistakes on the open demo Wi-Fi - it is not strong security).
+Use klarify-ota.bin here. firmware.bin is the USB image and the board will refuse it.
+Keep the board plugged in during the update; do not unplug it until the portal comes back.
+
 If something goes wrong
 -----------------------
 - "No ESP32 found": different USB cable (many are charge-only) / other port. Device Manager must
   show a USB serial device under Ports (CP210x or CH340, depending on the board). If it shows
   up there but the feeder still cannot find it, give the port yourself:
       klarify-feeder.exe --port COM5      (use the number Device Manager shows)
+- Update refused: wrong password, or you chose firmware.bin instead of klarify-ota.bin.
 - Flashing will not connect: hold the BOOT button while flash.bat says "Connecting....".
 - Antivirus blocks klarify-feeder.exe: use the Python version in the python-fallback folder:
       pip install numpy pyserial

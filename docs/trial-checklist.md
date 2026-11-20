@@ -17,6 +17,10 @@ Do it on the friend's laptop with the board, using the unzipped `klarify-demo` f
 | 10a | Press `4`, then quit the feeder with `q` while the alarm plays (board still powered) | within about 6 s the red clears; banner "Input idle" within about 3 s | |
 | 10b | Start the feeder again right away | **no** red "Smoke alarm" appears from the old sound; the portal stays quiet until you press a key | tell us - this is the stale-audio bug we fixed |
 | 10c | Press `4`, then pull the USB cable (this also switches the board off - it has no other power) | feeder says "Lost the connection"; within about 1-2 s the phone shows banner "Reconnecting..." and a grey "No signal" panel - **not** a stuck red screen | |
+| 12 | Portal footer | shows "Firmware 1.2" and an Update link | tell us |
+| 13 | Phone on Klarify-Demo: open `http://192.168.4.1/update`, wrong password, any file | "Wrong password." and nothing changes | |
+| 14 | Same page, right password (`klarify`), choose `firmware.bin` (the USB file) | "That file is not an update image. Use klarify-ota.bin" and the board keeps working | |
+| 15 | Same page, password `klarify`, choose `klarify-ota.bin` | progress bar, "Installed...", board restarts, portal comes back showing the same version; alerts still work | write down how long the restart took |
 | 11 | Leave the feeder idle 2 minutes in `0` (background) | no alerts at all | count and note any false alerts |
 
 Please send back: a photo of the phone for each colour, and anything in the "if not" column that happened.

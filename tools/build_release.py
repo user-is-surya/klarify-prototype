@@ -47,6 +47,8 @@ def main() -> None:
        "0x1000", PIO_BUILD / "bootloader.bin", "0x8000", PIO_BUILD / "partitions.bin",
        "0xe000", find_boot_app0(), "0x10000", PIO_BUILD / "firmware.bin")
 
+    shutil.copy2(PIO_BUILD / "firmware.bin", OUT / "klarify-ota.bin")  # app image for over-the-air updates
+
     feeder = pyinstaller("klarify-feeder", ROOT / "tools" / "feed.py", "--exclude-module", "sklearn",
                          "--hidden-import", "serial.tools.list_ports_windows")
     shutil.copy2(feeder, OUT / "klarify-feeder.exe")
@@ -54,6 +56,7 @@ def main() -> None:
     shutil.copy2(esp, OUT / "esptool.exe")
 
     shutil.copy2(ROOT / "release" / "flash.bat", OUT / "flash.bat")
+    shutil.copy2(ROOT / "release" / "update.bat", OUT / "update.bat")
     shutil.copy2(ROOT / "release" / "README.txt", OUT / "README.txt")
     fb = OUT / "python-fallback"
     fb.mkdir()

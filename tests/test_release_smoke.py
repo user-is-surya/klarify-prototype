@@ -9,7 +9,7 @@ from native_build import ROOT
 
 DIST = ROOT / "dist"
 ZIP = DIST / "klarify-demo.zip"
-NEEDED = {"firmware.bin", "esptool.exe", "klarify-feeder.exe", "flash.bat", "README.txt"}
+NEEDED = {"firmware.bin", "klarify-ota.bin", "esptool.exe", "klarify-feeder.exe", "flash.bat", "update.bat", "README.txt"}
 SIM = ROOT / "build" / "sim_device.exe"
 
 
@@ -52,3 +52,24 @@ def test_firmware_image_is_a_full_flash_image(kit):
     assert 700_000 < len(data) < 4_194_304
     assert data[0x1000] == 0xE9  # ESP image magic at the bootloader offset
     assert data[0x10000] == 0xE9  # app image at 0x10000
+
+
+def test_ota_image_and_partition_table_are_ota_ready(kit):
+    import struct
+
+    full = (kit / "firmware.bin").read_bytes()
+    ota = (kit / "klarify-ota.bin").read_bytes()
+    assert ota[0] == 0xE9, "OTA image must be an app image (starts with 0xE9), not the full USB image"
+    assert full[0] != 0xE9 and full[0x10000:0x10000 + len(ota)] == ota, "USB image must contain the same app at 0x10000"
+    ents = []
+    for i in range(0, 0xC00, 32):
+        e = full[0x8000 + i:0x8000 + i + 32]
+        if e[:2] != b"\xaa\x50":
+            break
+        t, st = e[2], e[3]
+        off, size = struct.unpack("<II", e[4:12])
+        ents.append((t, st, off, size))
+    ota_slots = [e for e in ents if e[0] == 0x00 and e[1] in (0x10, 0x11)]
+    assert {e[1] for e in ota_slots} == {0x10, 0x11}, ents
+    assert any(e[0] == 0x01 and e[1] == 0x00 for e in ents), "otadata partition missing"
+    assert all(len(ota) < e[3] for e in ota_slots), "app does not fit an OTA slot"
