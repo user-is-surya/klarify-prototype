@@ -1,0 +1,23 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-11-20-klarify-prototype.md
+
+Setup: project folder is not a git repo and no commits requested -> no worktree, no task-start/task-done scripts; this ledger is kept by hand. Tests run via `.venv\Scripts\python -m pytest`.
+Pre-flight: Task 2 consumes Task 1 render/SOUNDS (matches); Task 3 consumes Task 2 feature definition + model.h (matches); Task 4/5 consume Task 3 config/classifier; Task 8 consumes Tasks 1,4,5. No conflicts found.
+Ruling: skip worktree/git scripts — folder is not a repo, user asked for speed — cost if wrong: none (no history), ledger is the only progress record.
+Task 1: complete (tests: pytest tests/test_sounds.py -> 19 passed; requirements.txt pinned)
+Task 2: complete (tests: pytest tests/test_features.py tests/test_train.py -> 10 passed; firmware/include/model.h generated, held-out SYNTHETIC accuracy 0.948, weakest: smoke_alarm recall 0.866 (64/500 -> microwave_beep))
+Ruling: silence (duty == 0) maps to class background inside classify() (C++) and in the parity fixtures, not in the tree � the tree never saw silence in training � cost if wrong: a silent room could alert if the rule were removed. Clipped full-scale audio only has to give finite features and a valid class index (not necessarily background) � the plan's 'background' expectation for clipping cannot be guaranteed for a decision tree.
+Task 3: complete (tests: pytest tests/test_core_native.py::test_features_and_model_parity -> passed; C++ features/classifier match Python within tolerance)
+Task 4: complete (tests: pytest tests/test_protocol.py tests/test_core_native.py::test_protocol_alert_pipeline -> 3 passed)
+Ruling (Task 4): FrameParser gained drain() beside feed() — after a bad checksum the parser rescans buffered bytes, so one byte can complete >1 frame; callers loop drain() after feed() returns true — cost if wrong: a buffered good frame would wait one extra byte.
+Ruling (Task 5): JSON size test uses a 2048-byte budget instead of the plan's 1024 — 20 history entries at ~80 bytes each cannot fit in 1024 — main.cpp buffer will be 2304 bytes.
+Task 5: complete (tests: pytest tests/test_core_native.py -> 3 passed incl. test_state_and_led; sim_device.cpp compiles)
+Task 6: complete (tests: pytest tests/test_portal.py -> 4 passed; portal.h generated; visually verified in headless Chrome at 390px: urgent red hero, history, mute toggles, vibration button)
+Task 7: firmware/src/main.cpp + platformio.ini written; build running (see below)
+Ruling (Task 2/8): dataset labelled silent-gap windows (e.g. 1.5 s microwave pause > 1 s window) with the sound's class -> label noise -> background classified as microwave (found by test_no_false_alerts_in_30s...). Fix: render(return_mask=True) + window_label() labels windows with <10% audible samples as background — cost if wrong: slightly lower recall on very sparse sounds.
+Terminal 3 (11:60): claimed Task 9 (build_release.py, release/flash.bat, release/README.txt, docs/trial-checklist.md). Terminals 1/2 own Task 7 (main.cpp/pio build) and Task 8 (feed.py/test_feed_sim.py) — do not edit those; Task 9 only reads firmware/.pio build output and tools/feed.py.
+Task 7: complete (tests: pio run -d firmware -> SUCCESS, RAM 30.4%, Flash 59.3%; NOT run on a board). Rebuilt in Task 9 after model retrain.
+Task 8: complete (tests: pytest -> 50 passed in 42 s incl. feeder-vs-sim end-to-end and 30 s no-false-alert); model retrained after label fix: held-out SYNTHETIC accuracy 0.988
+Terminal 3: Task 9 files overlapped with another terminal's build; theirs (12:02) is the surviving version. I made no further edits; stopped to avoid clobbering.
+Task 9: complete (tests: pytest -> full suite incl. tests/test_release_smoke.py; dist/klarify-demo.zip 34.7 MB with firmware.bin, esptool.exe, klarify-feeder.exe, flash.bat, README.txt, python-fallback/; docs/trial-checklist.md written)
+Ruling (Task 9): another Claude session (dt-project-c3) overwrote tools/build_release.py at ~12:02; I verified the file differed, restored my original from the version I ran. Not re-run after restore (zip already built from the original) — cost if wrong: a typo in the restore would only show on the next rebuild. Also: files in dist/klarify-demo (staging) vanished once after the first build (cause unconfirmed; McAfee is installed, Defender real-time off); zip itself intact; smoke tests now extract the zip.
+Correction (Task 9): staging-folder deletion cause CONFIRMED by dt-project-c3: its build_release.py ran rmtree(dist/klarify-demo) at ~12:03 and stopped on the locked klarify-feeder.exe; zip untouched; not antivirus. Peer also ran 'pio run' (same source). Peer will not touch dist/ or Task 9 files.
