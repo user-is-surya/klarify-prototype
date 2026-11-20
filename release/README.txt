@@ -49,16 +49,23 @@ in the history, struck through.
 If something goes wrong
 -----------------------
 - "No ESP32 found": different USB cable (many are charge-only) / other port. Device Manager must
-  show "Silicon Labs CP210x USB to UART Bridge" under Ports.
+  show a USB serial device under Ports (CP210x or CH340, depending on the board). If it shows
+  up there but the feeder still cannot find it, give the port yourself:
+      klarify-feeder.exe --port COM5      (use the number Device Manager shows)
 - Flashing will not connect: hold the BOOT button while flash.bat says "Connecting....".
 - Antivirus blocks klarify-feeder.exe: use the Python version in the python-fallback folder:
       pip install numpy pyserial
       python feed.py
-- Portal shows "Reconnecting...": the phone left the Klarify-Demo Wi-Fi. Rejoin it.
-- Portal shows "Input idle": the feeder is not running or the cable was pulled.
+- Portal shows "Reconnecting..." and the big panel says "No signal": the phone left the
+  Klarify-Demo Wi-Fi, or the board lost power (the USB cable is its only power - unplugging it
+  switches it off). Rejoin the Wi-Fi / plug the board back in; it recovers by itself.
+- Portal shows "Input idle": the board is fine but the feeder is not running (or was closed).
+  Start klarify-feeder.exe again.
 - The feeder says the port is busy: close the Arduino IDE / any serial monitor.
 
 Honest notes for the panel
 --------------------------
 - All sounds are synthetic. Any accuracy we quote is on synthetic sounds, not real kitchens.
+- The "+" key makes the background noisier. At the two noisiest settings the board can mix sounds
+  up now and then; that is expected and worth saying out loud.
 - The audio never leaves the ESP32 - only the sound's name goes to the phone page.

@@ -104,6 +104,16 @@
   var $ = function(id){return document.getElementById(id);};
   var fails = 0, lastSeq = null, fetchedAt = 0, vibOn = false, state = null, busy = false;
 
+  // BEGIN heroMode
+  // What the big panel shows. "lost" = two failed polls in a row (board off / phone left the Wi-Fi):
+  // never keep showing the last alert as if it were current.
+  function heroMode(s, fails){
+    if (fails >= 2) return "lost";
+    if (!s) return "idle";
+    return s.current ? "alert" : "idle";
+  }
+  // END heroMode
+
   function ago(ms){ ms=Math.max(0,ms); var s=Math.round(ms/1000); return s<2?"just now":(s<60?s+"s ago":Math.round(s/60)+" min ago"); }
 
   function renderMutes(muted){
@@ -125,13 +135,18 @@
     $("dot").className="dot"+(fails>=2||!s.connected?" off":"");
     $("b-recon").className="banner"+(fails>=2?" show":"");
     $("b-idle").className="banner"+(fails<2&&!s.connected?" show":"");
-    var cur=s.current, hero=$("hero");
-    if(cur){
+    var mode=heroMode(s,fails), cur=s.current, hero=$("hero");
+    if(mode==="alert"){
       var meta=SOUNDS[cur.sound]||{icon:"🔊",name:cur.label,hint:""};
       document.body.className=cur.level; hero.className="hero";
       $("icon").textContent=meta.icon; $("name").textContent=cur.label; $("hint").textContent=meta.hint;
       $("chip").hidden=false; $("chip").textContent=cur.level.toUpperCase();
       $("ago").textContent=ago(cur.age_ms+elapsed);
+    } else if(mode==="lost"){
+      document.body.className="idle"; hero.className="hero listening";
+      $("icon").textContent="📡"; $("name").textContent="No signal";
+      $("hint").textContent="Check the board has power and this phone is on the Klarify-Demo Wi-Fi";
+      $("chip").hidden=true; $("ago").textContent="";
     } else {
       document.body.className="idle"; hero.className="hero listening";
       $("icon").textContent="👂"; $("name").textContent="Listening…"; $("hint").textContent="";

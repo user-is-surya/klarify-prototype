@@ -108,11 +108,62 @@ static void pipeline_tests() {
   CHECK(hop, "pipeline_hop_is_4000_samples: at 4000");
 }
 
+static void reset_and_gap_tests() {
+  AlertEvent ev;
+  {
+    AlertEngine e;
+    e.update(WHISTLE, 0, ev);
+    e.reset();
+    CHECK(e.update(WHISTLE, 500, ev) == OUT_NONE, "alert_reset_clears_streak");
+  }
+  {
+    AlertEngine e;
+    e.set_muted(DOORBELL, true);
+    e.reset();
+    CHECK(e.is_muted(DOORBELL), "alert_reset_keeps_mutes");
+  }
+  static int16_t silence[kHop];
+  memset(silence, 0, sizeof(silence));
+  {
+    AlertEngine e;
+    Pipeline p(e);
+    WindowResult r;
+    uint32_t now = 0;
+    p.push_samples(silence, 4000, now += 500, r);
+    bool first = p.push_samples(silence, 4000, now += 500, r);
+    CHECK(first, "gap setup: first window completes");
+    now += 1500;  // input stopped for 1.5 s (feeder quit / restarted)
+    bool after_gap = p.push_samples(silence, 4000, now, r);
+    CHECK(!after_gap, "pipeline_gap_discards_stale_audio: needs a fresh full window after a gap");
+    bool fresh = p.push_samples(silence, 4000, now += 500, r);
+    CHECK(fresh, "pipeline_gap: next window after 8000 fresh samples");
+  }
+  {
+    AlertEngine e;
+    Pipeline p(e);
+    WindowResult r;
+    p.push_samples(silence, 400, 1000, r);
+    e.update(WHISTLE, 1000, ev);  // streak 1
+    p.push_samples(silence, 400, 2500, r);  // 1.5 s gap
+    CHECK(e.update(WHISTLE, 2500, ev) == OUT_NONE, "pipeline_gap_resets_alert_streak");
+  }
+  {
+    AlertEngine e;
+    Pipeline p(e);
+    WindowResult r;
+    p.push_samples(silence, 400, 1000, r);
+    e.update(WHISTLE, 1000, ev);
+    p.push_samples(silence, 400, 1050, r);  // normal 50 ms cadence: no reset
+    CHECK(e.update(WHISTLE, 1500, ev) == OUT_ALERT, "continuous_input_does_not_reset_streak");
+  }
+}
+
 int main(int argc, char** argv) {
   if (argc >= 2) parser_resyncs_after_garbage(argv[1]);
   else { printf("FAIL missing stream.bin arg\n"); g_fail++; }
   alert_tests();
   pipeline_tests();
+  reset_and_gap_tests();
   printf(g_fail ? "FAILED: %d\n" : "ALL PASSED\n", g_fail);
   return g_fail ? 1 : 0;
 }

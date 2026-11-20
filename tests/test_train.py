@@ -25,3 +25,10 @@ def test_training_is_deterministic_for_seed(tmp_path):
     train(a, seed=3, n_per_class=100)
     train(b, seed=3, n_per_class=100)
     assert a.read_text() == b.read_text()
+
+
+def test_metrics_report_accuracy_at_noisy_settings_too(tmp_path):
+    r = train(tmp_path / "model.h", seed=0, n_per_class=100)
+    by = r.metrics["accuracy_by_snr"]
+    assert set(by) == {"10-30 dB", "6 dB", "3 dB"}
+    assert all(0.0 <= v <= 1.0 for v in by.values())

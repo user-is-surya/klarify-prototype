@@ -36,6 +36,14 @@ class AlertEngine {
     return muted_[cls] ? OUT_MUTED : OUT_ALERT;
   }
 
+  // Forget the running streak and last alert (mutes are kept). Called when the audio input stops.
+  void reset() {
+    prev_ = 0;
+    streak_ = 0;
+    last_event_cls_ = -1;
+    last_event_ms_ = 0;
+  }
+
   void set_muted(int cls, bool m) {
     if (cls > 0 && cls < kNumClasses) muted_[cls] = m;
   }

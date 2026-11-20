@@ -75,17 +75,30 @@ def parse_script(text: str) -> list[tuple[str, float]]:
     return out
 
 
+# USB-serial bridges found on ESP32 dev boards, best guess first.
+_BRIDGES = [
+    ("CP210", "10C4:EA60"),  # Silicon Labs CP210x
+    ("CH340", "1A86:7523"),
+    ("CH910", "1A86:55D4"),  # CH9102
+    ("FTDI", "0403:6001"),
+]
+
+
 def find_port() -> str | None:
-    """First serial port that looks like a CP210x USB bridge, else None."""
+    """Serial port of a likely ESP32 board: CP210x, CH340, CH9102 or FTDI bridge; failing that, the only
+    USB serial port present. None if nothing suitable (pass --port COMx then)."""
     try:
         from serial.tools import list_ports
     except Exception:
         return None
-    for p in list_ports.comports():
-        desc = f"{p.description or ''} {p.hwid or ''}".upper()
-        if "CP210" in desc or "10C4:EA60" in desc:
-            return p.device
-    return None
+    ports = list(list_ports.comports())
+    texts = [(p, f"{p.description or ''} {p.hwid or ''}".upper()) for p in ports]
+    for name, vidpid in _BRIDGES:
+        for p, t in texts:
+            if name in t or vidpid in t:
+                return p.device
+    usb = [p for p, t in texts if "USB" in t]
+    return usb[0].device if len(usb) == 1 else None
 
 
 class Link:
@@ -306,8 +319,9 @@ def main(argv=None) -> int:
     else:
         port = a.port or find_port()
         if not port:
-            print("No ESP32 found. Plug the board in with a data USB cable (and check the CP210x driver), "
-                  "or pass --port COMx.")
+            print("No ESP32 found. Plug the board in with a data USB cable (and check its USB driver: CP210x or "
+                  "CH340), or pass the port yourself, e.g.  klarify-feeder.exe --port COM5  "
+                  "(Device Manager > Ports shows the number).")
             return 2
         try:
             link = SerialLink(port)

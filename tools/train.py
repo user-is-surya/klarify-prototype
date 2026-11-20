@@ -66,6 +66,11 @@ def train(out_header: Path, seed: int = 0, n_per_class: int = 1500) -> TrainResu
         "recall": {SOUNDS[i]: float(conf[i, i] / max(conf[i].sum(), 1)) for i in range(n)},
         "confusion": conf.tolist(),
     }
+    by_snr = {"10-30 dB": metrics["accuracy"]}
+    for label, snr in (("6 dB", (6.0, 6.0)), ("3 dB", (3.0, 3.0))):
+        Xn, yn = make_dataset(max(n_per_class // 3, 100), seed + 2000, snr_range=snr)
+        by_snr[label] = float(np.mean(tree.predict(Xn) == yn))
+    metrics["accuracy_by_snr"] = by_snr
     _write_header(tree, Path(out_header))
     return TrainResult(tree=tree, metrics=metrics)
 
@@ -73,6 +78,8 @@ def train(out_header: Path, seed: int = 0, n_per_class: int = 1500) -> TrainResu
 if __name__ == "__main__":
     r = train(Path("firmware/include/model.h"))
     print("Held-out accuracy on SYNTHETIC data (SNR 10-30 dB): %.3f" % r.metrics["accuracy"])
+    for k, v in r.metrics["accuracy_by_snr"].items():
+        print(f"  accuracy at {k:9s} (SYNTHETIC data): {v:.3f}")
     for k, v in r.metrics["recall"].items():
         print(f"  recall {k:15s} {v:.3f}")
     print("confusion (rows=true, cols=pred; order:", ", ".join(SOUNDS), ")")

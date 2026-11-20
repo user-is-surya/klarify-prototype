@@ -13,6 +13,7 @@ constexpr int kNumBins = 255;     // bins k = 1..255
 constexpr int kNumFeatures = 10;
 constexpr int kNumClasses = 6;
 constexpr int kBlockSamples = 400;  // 50 ms per serial block
+constexpr uint32_t kInputGapMs = 1000;  // no audio for longer than this = input stopped: drop stale state
 
 enum Level { LEVEL_NONE = 0, LEVEL_INFO = 1, LEVEL_IMPORTANT = 2, LEVEL_URGENT = 3 };
 
